@@ -40,7 +40,9 @@ export function ThinkingSection() {
   const createModalRef = useRef<HTMLDivElement>(null)
   const createModalContentRef = useRef<HTMLDivElement>(null)
 
-  const [thoughts, setThoughts] = useState<Category[]>([])
+  const [thoughts, setThoughts] = useState<Category[]>(
+    categories.map((cat) => ({ ...cat, items: [] }))
+  )
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalLevel, setModalLevel] = useState(1)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
