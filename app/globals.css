@@ -124,6 +124,28 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
+/* Custom scrollbar for modal content */
+.modal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-scrollbar::-webkit-scrollbar-track {
+  background: hsl(0, 0%, 8%);
+  border-radius: 3px;
+}
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(0, 0%, 24%);
+  border-radius: 3px;
+}
+.modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(0, 0%, 32%);
+}
+
+/* Custom scrollbar for Firefox */
+.modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(0, 0%, 24%) hsl(0, 0%, 8%);
+}
+
 /* Grid background pattern */
 .grid-bg {
   background-image: linear-gradient(to right, oklch(0.2 0 0) 1px, transparent 1px),

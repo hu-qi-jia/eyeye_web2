@@ -8,11 +8,12 @@ import { ScrollTrigger } from "gsap/ScrollTrigger"
 gsap.registerPlugin(ScrollTrigger)
 
 interface NoteItem {
-  id?: number
+  id: number
   title: string
   content: string
   category: string
   medium: string
+  date: string
   created_at?: string
 }
 
@@ -25,9 +26,9 @@ interface Category {
 }
 
 const categories = [
-  { title: "产品思考", medium: "Product", description: "整理我对功能体验、用户需求和产品决策的观察。", span: "col-span-1 row-span-1" },
-  { title: "CODING手记", medium: "Tech Notes", description: "记录组件设计、页面实现与真实项目里遇到的问题和解法。", span: "col-span-2 row-span-2" },
-  { title: "设计灵感", medium: "Visual Notes", description: "收集值得记录的排版、界面节奏和视觉表达方式。", span: "col-span-1 row-span-2" },
+  { title: "产品思考", medium: "Product", description: "整理我对功能体验、用户需求和产品决策的观察。", span: "row-span-2 lg:col-span-1 lg:row-span-2" },
+  { title: "CODING手记", medium: "Tech Notes", description: "记录组件设计、页面实现与真实项目里遇到的问题和解法。", span: "row-span-2 md:col-span-2 md:row-span-2 lg:col-span-2 lg:row-span-2" },
+  { title: "设计灵感", medium: "Visual Notes", description: "收集值得记录的排版、界面节奏和视觉表达方式。", span: "col-span-1 row-span-1" },
   { title: "更新日志", medium: "Changelog", description: "持续记录这个博客本身的调整、迭代和新想法。", span: "col-span-1 row-span-1" },
 ]
 
@@ -50,9 +51,11 @@ export function ThinkingSection() {
   const [cardBounds, setCardBounds] = useState<DOMRect | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [newNote, setNewNote] = useState({ title: "", content: "", category: "", medium: "" })
-  const [isInitialized, setIsInitialized] = useState(false)
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     const initAndFetch = async () => {
@@ -69,7 +72,6 @@ export function ThinkingSection() {
       } catch (e) {
         console.error("Failed to fetch notes:", e)
       }
-      setIsInitialized(true)
     }
     initAndFetch()
   }, [])
@@ -77,18 +79,22 @@ export function ThinkingSection() {
   const organizeData = (notes: NoteItem[]) => {
     const organized = categories.map((cat) => ({
       ...cat,
-      items: notes.filter((n) => n.category === cat.title).map((n) => ({
-        title: n.title,
-        content: n.content,
-        date: n.created_at ? new Date(n.created_at).toISOString().split("T")[0] : "",
-      })),
+      items: notes
+        .filter((n) => n.category === cat.title)
+        .map((n) => ({
+          id: n.id,
+          title: n.title,
+          content: n.content,
+          category: n.category,
+          medium: n.medium,
+          date: n.created_at ? new Date(n.created_at).toISOString().split("T")[0] : "",
+        })),
     }))
     setThoughts(organized)
   }
 
   useEffect(() => {
     if (!sectionRef.current || !headerRef.current || !gridRef.current) return
-    if (!isInitialized) return
 
     const ctx = gsap.context(() => {
       gsap.fromTo(
@@ -126,7 +132,7 @@ export function ThinkingSection() {
     }, sectionRef)
 
     return () => ctx.revert()
-  }, [isInitialized])
+  }, [])
 
   const openModal = useCallback((categoryTitle: string, bounds: DOMRect) => {
     setSelectedCategory(categoryTitle)
@@ -172,6 +178,7 @@ export function ThinkingSection() {
   const openCreateModal = useCallback(() => {
     setIsCreateModalOpen(true)
     setNewNote({ title: "", content: "", category: "", medium: "" })
+    setEditingNoteId(null)
   }, [])
 
   const closeCreateModal = useCallback(() => {
@@ -193,17 +200,26 @@ export function ThinkingSection() {
   const handleCreateNote = async () => {
     if (!newNote.title || !newNote.content || !newNote.category) return
     const cat = categories.find((c) => c.title === newNote.category)
-    const medium = cat?.medium || ""
+    const medium = cat?.medium || newNote.medium
 
     setIsSaving(true)
     setSaveError(null)
 
     try {
-      const res = await fetch("/api/thinking/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newNote, medium }),
-      })
+      let res
+      if (editingNoteId) {
+        res = await fetch("/api/thinking/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editingNoteId, title: newNote.title, content: newNote.content, category: newNote.category, medium }),
+        })
+      } else {
+        res = await fetch("/api/thinking/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...newNote, medium }),
+        })
+      }
       const data = await res.json()
       if (data.success) {
         const refreshRes = await fetch("/api/thinking")
@@ -213,6 +229,7 @@ export function ThinkingSection() {
         }
         closeCreateModal()
         setNewNote({ title: "", content: "", category: "", medium: "" })
+        setEditingNoteId(null)
       } else {
         setSaveError(data.error || "保存失败")
       }
@@ -220,6 +237,34 @@ export function ThinkingSection() {
       setSaveError("网络错误，请重试")
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleDeleteNote = async (id: number) => {
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    try {
+      const res = await fetch("/api/thinking/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        const refreshRes = await fetch("/api/thinking")
+        const refreshData = await refreshRes.json()
+        if (refreshData.success) {
+          organizeData(refreshData.data)
+        }
+        closeToLevel1()
+      } else {
+        setDeleteError(data.error || "删除失败")
+      }
+    } catch (e) {
+      setDeleteError("网络错误，请重试")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -275,12 +320,10 @@ export function ThinkingSection() {
 
   const currentCategory = thoughts.find((t) => t.title === selectedCategory)
 
-  if (!isInitialized) return null
-
   return (
     <>
-      <section ref={sectionRef} id="thinking" className="relative py-32 pl-6 md:pl-28 pr-6 md:pr-12">
-        <div ref={headerRef} className="mb-16 flex items-end justify-between">
+      <section ref={sectionRef} id="thinking" className="relative py-20 md:py-32 pl-6 md:pl-28 pr-6 md:pr-12">
+        <div ref={headerRef} className="mb-10 md:mb-16 flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
           <div>
             <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">03 / Thinking</span>
             <h2 className="mt-4 font-[var(--font-bebas)] text-5xl md:text-7xl tracking-tight">THINKING</h2>
@@ -295,7 +338,7 @@ export function ThinkingSection() {
 
         <div
           ref={gridRef}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 auto-rows-[180px] md:auto-rows-[200px]"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-[160px] md:auto-rows-[180px] lg:auto-rows-[200px] grid-flow-dense"
         >
           {thoughts.map((thought, index) => (
             <ThinkingCard
@@ -313,17 +356,19 @@ export function ThinkingSection() {
           ref={modalRef}
           className="fixed inset-0 z-[100] flex items-center justify-center"
           onClick={closeModal}
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
           <div
             ref={modalContentRef}
-            className="relative w-[90vw] max-w-[700px] h-[600px] max-h-[85vh] bg-background/95 backdrop-blur-xl border border-border/40 rounded-none shadow-2xl overflow-hidden"
+            className="relative w-[90vw] max-w-[700px] max-h-[85vh] h-auto bg-background/95 backdrop-blur-xl border border-border/40 rounded-none shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-transparent pointer-events-none rounded-none" />
 
-            <div className="relative z-10 p-6 lg:p-8">
-              <div className="flex items-center justify-between mb-6">
+            <div className="relative z-10 p-6 lg:p-8 flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between mb-6 flex-shrink-0">
                 <div>
                   {modalLevel === 1 && selectedCategory && (
                     <>
@@ -346,7 +391,10 @@ export function ThinkingSection() {
               </div>
 
               {modalLevel === 1 && currentCategory && (
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+                <div
+                  className="flex-1 overflow-y-auto pr-2 modal-scrollbar min-h-[100px] space-y-3"
+                  onWheel={(e) => e.stopPropagation()}
+                >
                   {currentCategory.items.length === 0 ? (
                     <p className="text-white/40 text-center py-8">暂无笔记</p>
                   ) : (
@@ -356,12 +404,12 @@ export function ThinkingSection() {
                         onClick={() => openLevel2(item)}
                         className="w-full text-left p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent/40 transition-all duration-300 group"
                       >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-white/90 group-hover:text-accent transition-colors">{item.title}</h4>
-                            <p className="mt-1 text-sm text-white/50 line-clamp-2">{item.content}</p>
+                        <div className="flex items-start justify-between gap-4 overflow-hidden">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-white/90 group-hover:text-accent transition-colors truncate">{item.title}</h4>
+                            <p className="mt-1 text-sm text-white/50 line-clamp-2 break-words">{item.content}</p>
                           </div>
-                          <span className="font-mono text-xs text-white/30 whitespace-nowrap">{item.date}</span>
+                          <span className="font-mono text-xs text-white/30 whitespace-nowrap flex-shrink-0">{item.date}</span>
                         </div>
                       </button>
                     ))
@@ -370,8 +418,46 @@ export function ThinkingSection() {
               )}
 
               {modalLevel === 2 && selectedItem && (
-                <div className="max-h-[50vh] overflow-y-auto pr-2">
-                  <p className="text-base lg:text-lg text-white/70 leading-relaxed">{selectedItem.content}</p>
+                <div className="flex flex-col min-h-[100px]">
+                  <div
+                    className="flex-1 overflow-y-auto pr-2 modal-scrollbar"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                  <p className="text-base lg:text-lg text-white/70 leading-relaxed whitespace-pre-wrap break-words">{selectedItem.content}</p>
+                  {deleteError && (
+                    <p className="text-red-400 text-sm text-center mt-4">{deleteError}</p>
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-white/10 flex-shrink-0">
+                  <button
+                    onClick={() => handleDeleteNote(selectedItem.id)}
+                    disabled={isDeleting}
+                    className="px-4 py-2 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-white transition-colors font-mono text-sm flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    删除
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNewNote({
+                        title: selectedItem.title,
+                        content: selectedItem.content,
+                        category: "",
+                        medium: "",
+                      })
+                      setEditingNoteId(selectedItem.id)
+                      setIsCreateModalOpen(true)
+                    }}
+                    className="px-4 py-2 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-white transition-colors font-mono text-sm flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    编辑
+                  </button>
+                </div>
                 </div>
               )}
             </div>
@@ -384,6 +470,8 @@ export function ThinkingSection() {
           ref={createModalRef}
           className="fixed inset-0 z-[100] flex items-center justify-center"
           onClick={closeCreateModal}
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
           <div
@@ -395,7 +483,7 @@ export function ThinkingSection() {
 
             <div className="relative z-10 p-6 lg:p-8">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="font-[var(--font-bebas)] text-3xl tracking-wide">新建笔记</h3>
+                <h3 className="font-[var(--font-bebas)] text-3xl tracking-wide">{editingNoteId ? "编辑笔记" : "新建笔记"}</h3>
                 <button onClick={closeCreateModal} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
                   <svg className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -456,7 +544,7 @@ export function ThinkingSection() {
                       : "bg-white/10 text-white/30 cursor-not-allowed"
                   )}
                 >
-                  {isSaving ? "保存中..." : "保存笔记"}
+                  {isSaving ? "保存中..." : (editingNoteId ? "更新笔记" : "保存笔记")}
                 </button>
                 {saveError && (
                   <p className="text-red-400 text-sm text-center mt-2">{saveError}</p>
@@ -511,18 +599,18 @@ function ThinkingCard({
       </div>
 
       <div className="relative z-10">
-        <p className={cn("font-mono text-xs text-muted-foreground leading-relaxed transition-all duration-500 max-w-[280px]", isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2")}>
+        <p className={cn("font-mono text-xs text-muted-foreground leading-relaxed transition-all duration-500 max-w-[280px]", isHovered ? "opacity-100 translate-y-0" : "md:opacity-0 md:translate-y-2")}>
           {thought.description}
         </p>
         {thought.items.length > 0 && (
-          <p className={cn("mt-2 font-mono text-xs text-accent transition-all duration-500", isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2")}>
+          <p className={cn("mt-2 font-mono text-xs text-accent transition-all duration-500", isHovered ? "opacity-100 translate-y-0" : "md:opacity-0 md:translate-y-2")}>
             {thought.items.length} 篇笔记
           </p>
         )}
       </div>
 
       <span className={cn("absolute bottom-4 right-4 font-mono text-[10px] transition-colors duration-300", isHovered ? "text-accent" : "text-muted-foreground/40")}>
-        {String(index + 1).padStart(2, "0")}
+        {String(categories.findIndex(c => c.title === thought.title) + 1).padStart(2, "0")}
       </span>
 
       <div className={cn("absolute top-0 right-0 w-12 h-12 transition-all duration-500", isHovered ? "opacity-100" : "opacity-0")}>
