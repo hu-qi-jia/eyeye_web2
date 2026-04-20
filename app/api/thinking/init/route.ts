@@ -1,4 +1,6 @@
-import { sql } from '@vercel/postgres'
+import { neon } from '@neondatabase/serverless'
+
+const sql = neon(process.env.DATABASE_URL!)
 
 export async function POST() {
   try {
@@ -14,9 +16,10 @@ export async function POST() {
       )
     `
 
-    const { rows } = await sql`SELECT COUNT(*) as count FROM thinking_notes`
+    const result = await sql`SELECT COUNT(*) as count FROM thinking_notes`
+    const count = Number(result[0].count)
 
-    if (Number(rows[0].count) === 0) {
+    if (count === 0) {
       await sql`
         INSERT INTO thinking_notes (title, content, category, medium) VALUES
         ('从0到1的产品设计流程', '探索产品设计的核心方法论，从需求分析到原型迭代的完整流程分享。', '产品思考', 'Product'),

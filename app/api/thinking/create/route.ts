@@ -1,4 +1,6 @@
-import { sql } from '@vercel/postgres'
+import { neon } from '@neondatabase/serverless'
+
+const sql = neon(process.env.DATABASE_URL!)
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +13,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { rows } = await sql`
+    const rows = await sql`
       INSERT INTO thinking_notes (title, content, category, medium)
       VALUES (${title}, ${content}, ${category}, ${medium})
       RETURNING *
