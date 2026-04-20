@@ -49,6 +49,8 @@ export function ThinkingSection() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [newNote, setNewNote] = useState({ title: "", content: "", category: "", medium: "" })
   const [isInitialized, setIsInitialized] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     const initAndFetch = async () => {
@@ -210,6 +212,9 @@ export function ThinkingSection() {
     const cat = categories.find((c) => c.title === newNote.category)
     const medium = cat?.medium || ""
 
+    setIsSaving(true)
+    setSaveError(null)
+
     try {
       const res = await fetch("/api/thinking/create", {
         method: "POST",
@@ -224,9 +229,14 @@ export function ThinkingSection() {
           organizeData(refreshData.data)
         }
         closeCreateModal()
+        setNewNote({ title: "", content: "", category: "", medium: "" })
+      } else {
+        setSaveError(data.error || "保存失败")
       }
     } catch (e) {
-      console.error("Failed to create note:", e)
+      setSaveError("网络错误，请重试")
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -455,16 +465,19 @@ export function ThinkingSection() {
 
                 <button
                   onClick={handleCreateNote}
-                  disabled={!newNote.title || !newNote.content || !newNote.category}
+                  disabled={!newNote.title || !newNote.content || !newNote.category || isSaving}
                   className={cn(
                     "w-full py-3 rounded-xl font-mono text-sm transition-all duration-200",
-                    newNote.title && newNote.content && newNote.category
+                    newNote.title && newNote.content && newNote.category && !isSaving
                       ? "bg-accent text-white hover:bg-accent/90"
                       : "bg-white/10 text-white/30 cursor-not-allowed"
                   )}
                 >
-                  保存笔记
+                  {isSaving ? "保存中..." : "保存笔记"}
                 </button>
+                {saveError && (
+                  <p className="text-red-400 text-sm text-center mt-2">{saveError}</p>
+                )}
               </div>
             </div>
           </div>
