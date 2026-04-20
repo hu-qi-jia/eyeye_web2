@@ -52,22 +52,42 @@ export function ThinkingSection() {
 
   useEffect(() => {
     const initAndFetch = async () => {
+      let usedFallback = false
       try {
-        await fetch("/api/thinking/init", { method: "POST" })
+        const initRes = await fetch("/api/thinking/init", { method: "POST" })
+        if (!initRes.ok) throw new Error("Init failed")
       } catch (e) {}
       try {
         const res = await fetch("/api/thinking")
         const data = await res.json()
-        if (data.success && data.data) {
+        if (data.success && data.data && data.data.length > 0) {
           organizeData(data.data)
-          setIsInitialized(true)
+        } else {
+          organizeData(getLocalData())
+          usedFallback = true
         }
       } catch (e) {
-        organizeData([])
+        organizeData(getLocalData())
+        usedFallback = true
       }
+      setIsInitialized(true)
     }
     initAndFetch()
   }, [])
+
+  const getLocalData = () => [
+    { title: "从0到1的产品设计流程", content: "探索产品设计的核心方法论，从需求分析到原型迭代的完整流程分享。", category: "产品思考", medium: "Product", created_at: "2024-01-15" },
+    { title: "用户研究的本质", content: "深入理解用户研究不是为了验证想法，而是为了发现未知。", category: "产品思考", medium: "Product", created_at: "2024-02-20" },
+    { title: "MVP设计的陷阱", content: "最小可行产品不是最简陋的产品，而是最核心的产品。", category: "产品思考", medium: "Product", created_at: "2024-03-10" },
+    { title: "React Server Components 实践", content: "RSC 不仅是技术升级，更是思维方式的重塑。", category: "CODING手记", medium: "Tech Notes", created_at: "2024-01-08" },
+    { title: "动画库性能优化", content: "如何让页面60fps流畅运行，避免动画卡顿。", category: "CODING手记", medium: "Tech Notes", created_at: "2024-02-14" },
+    { title: "TypeScript 高级技巧", content: "类型系统的深度应用，让代码更健壮。", category: "CODING手记", medium: "Tech Notes", created_at: "2024-03-01" },
+    { title: "状态管理演进之路", content: "从 useState 到 Zustand，找到适合的平衡点。", category: "CODING手记", medium: "Tech Notes", created_at: "2024-03-22" },
+    { title: "玻璃拟态设计趋势", content: "Glassmorphism 的复兴与创新应用。", category: "设计灵感", medium: "Visual Notes", created_at: "2024-01-20" },
+    { title: "暗色模式设计原则", content: "如何在不同场景下打造舒适的暗色体验。", category: "设计灵感", medium: "Visual Notes", created_at: "2024-02-28" },
+    { title: "v2.0 全新改版", content: "视觉与交互的全面升级，带来更沉浸的体验。", category: "更新日志", medium: "Changelog", created_at: "2024-03-15" },
+    { title: "AI 对话模块上线", content: "用 AI 打造更智能的交互体验。", category: "更新日志", medium: "Changelog", created_at: "2024-04-01" },
+  ]
 
   const organizeData = (notes: NoteItem[]) => {
     const organized = categories.map((cat) => ({
