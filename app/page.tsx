@@ -2,8 +2,7 @@ import { HeroSection } from "@/components/hero-section"
 import { SignalsSection } from "@/components/signals-section"
 import { WorkSection } from "@/components/work-section"
 import { ThinkingSection } from "@/components/thinking-section"
-import { PrinciplesSection } from "@/components/principles-section"
-import { ColophonSection } from "@/components/colophon-section"
+import { ContactSection } from "@/components/contact-section"
 import { SideNav } from "@/components/side-nav"
 
 export default function Page() {
@@ -17,8 +16,7 @@ export default function Page() {
         <WorkSection />
         <SignalsSection />
         <ThinkingSection />
-        <PrinciplesSection />
-        <ColophonSection />
+        <ContactSection />
       </div>
     </main>
   )
