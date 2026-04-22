@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "env": {
+    "DATABASE_URL": "@database-url",
+    "DIFY_API_KEY": "@dify-api-key",
+    "DIFY_API_URL": "https://api.dify.ai/v1/chat-messages"
+  }
+}

@@ -1,9 +1,17 @@
 import { neon } from '@neondatabase/serverless'
 
-const sql = neon(process.env.DATABASE_URL!)
+const DATABASE_URL = process.env.DATABASE_URL
 
 export async function GET() {
+  if (!DATABASE_URL) {
+    return Response.json({ 
+      success: false, 
+      error: 'DATABASE_URL environment variable is not configured'
+    }, { status: 500 })
+  }
+
   try {
+    const sql = neon(DATABASE_URL)
     const result = await sql`SELECT NOW() as current_time`
     return Response.json({ 
       success: true, 

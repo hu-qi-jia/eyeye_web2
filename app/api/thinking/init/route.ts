@@ -1,9 +1,14 @@
 import { neon } from '@neondatabase/serverless'
 
-const sql = neon(process.env.DATABASE_URL!)
+const DATABASE_URL = process.env.DATABASE_URL
 
 export async function POST() {
+  if (!DATABASE_URL) {
+    return Response.json({ success: false, error: 'DATABASE_URL not configured' }, { status: 500 })
+  }
+
   try {
+    const sql = neon(DATABASE_URL)
     await sql`
       CREATE TABLE IF NOT EXISTS thinking_notes (
         id SERIAL PRIMARY KEY,
