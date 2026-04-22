@@ -39,10 +39,10 @@ function Modal({ open, onClose, children }: ModalProps) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={handleOverlayClick}
     >
-      <div className="relative rounded-none border border-[#27272a] bg-[#0f0f0f] shadow-2xl">
+      <div className="relative w-full max-w-[90vw] sm:max-w-lg rounded-none border border-[#27272a] bg-[#0f0f0f] shadow-2xl">
         <button
           onClick={onClose}
           className="absolute -top-3 -right-3 z-10 flex h-8 w-8 items-center justify-center border border-[#27272a] bg-[#1a1a1a] text-white/60 hover:text-white transition-colors"
@@ -197,36 +197,38 @@ export function ContactSection() {
       </div>
 
       <Modal open={wechatOpen} onClose={() => setWechatOpen(false)}>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="text-center mb-4">
             <span className="font-mono text-xs uppercase tracking-[0.2em] text-white/50">WeChat QR Code</span>
           </div>
-          <Image
-            src="/mywechat.png"
-            alt="My WeChat"
-            width={320}
-            height={426}
-            className="block"
-          />
+          <div className="flex justify-center">
+            <Image
+              src="/mywechat.png"
+              alt="My WeChat"
+              width={320}
+              height={426}
+              className="block w-auto h-auto max-w-[200px] sm:max-w-[280px]"
+            />
+          </div>
         </div>
       </Modal>
 
       <Modal open={phoneOpen} onClose={() => setPhoneOpen(false)}>
-        <div className="px-16 py-12 text-center">
+        <div className="px-6 py-10 sm:px-16 sm:py-12 text-center">
           <div className="mb-4">
             <span className="font-mono text-xs uppercase tracking-[0.2em] text-white/50">Phone Number</span>
           </div>
-          <p className="font-mono text-3xl text-white/90 tracking-widest">198-5208-8553</p>
+          <p className="font-mono text-xl sm:text-3xl text-white/90 tracking-widest">198-5208-8553</p>
         </div>
       </Modal>
 
       <Modal open={emailOpen} onClose={() => setEmailOpen(false)}>
-        <div className="px-12 py-12">
+        <div className="px-6 py-10 sm:px-12 sm:py-12">
           <div className="text-center mb-4">
             <span className="font-mono text-xs uppercase tracking-[0.2em] text-white/50">Email Address</span>
           </div>
-          <div className="flex items-center justify-center gap-4">
-            <p className="font-mono text-3xl text-white/90">408490791@qq.com</p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+            <p className="font-mono text-sm sm:text-3xl text-white/90 break-all">408490791@qq.com</p>
             <button
               onClick={copyEmail}
               className="shrink-0 border border-[#27272a] bg-[#1a1a1a] px-4 py-2 font-mono text-sm text-white/70 hover:text-white hover:bg-[#27272a] transition-colors"

@@ -439,9 +439,9 @@ function EyeChat() {
 }
 
 function EyeAnimation() {
-  const [isOpen, setIsOpen] = useState(true)
-  const [isHovered, setIsHovered] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const eyeRef = useRef<HTMLDivElement>(null)
+  const glowRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -458,7 +458,7 @@ function EyeAnimation() {
           scrollTrigger: {
             trigger: containerRef.current,
             start: "top 85%",
-            toggleActions: "play none none reverse",
+            toggleActions: "play none none none",
           },
         },
       )
@@ -468,60 +468,70 @@ function EyeAnimation() {
   }, [])
 
   useEffect(() => {
-    let blinkTimeout: ReturnType<typeof setTimeout> | null = null
+    const eye = eyeRef.current
+    const glow = glowRef.current
+    if (!eye || !glow) return
 
-    const blinkInterval = setInterval(() => {
-      setIsOpen(false)
-      blinkTimeout = setTimeout(() => {
-        setIsOpen(true)
-      }, 180)
-    }, 2600)
+    let isHovered = false
+
+    const handleEnter = () => {
+      isHovered = true
+      eye.style.backgroundColor = "var(--accent)"
+      glow.classList.add("eye-glow-active")
+    }
+
+    const handleLeave = () => {
+      isHovered = false
+      eye.style.backgroundColor = "#ffffff"
+      glow.classList.remove("eye-glow-active")
+    }
+
+    const container = containerRef.current
+    if (!container) return
+
+    container.addEventListener("mouseenter", handleEnter)
+    container.addEventListener("mouseleave", handleLeave)
 
     return () => {
-      clearInterval(blinkInterval)
-      if (blinkTimeout) clearTimeout(blinkTimeout)
+      container.removeEventListener("mouseenter", handleEnter)
+      container.removeEventListener("mouseleave", handleLeave)
     }
   }, [])
-
-  const maskImage = isOpen ? "url('/eye_open.svg')" : "url('/eye_close.svg')"
 
   return (
     <div
       ref={containerRef}
       className="relative flex justify-start opacity-0 ml-4 md:ml-8"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={cn(
-          "absolute left-0 top-1/2 -translate-y-1/2 rounded-full blur-3xl transition-all duration-300",
-          isHovered ? "opacity-100 scale-110" : "opacity-0 scale-100",
-        )}
+        ref={glowRef}
+        className="eye-glow absolute left-0 top-1/2 -translate-y-1/2 rounded-full blur-3xl opacity-0"
         style={{
           width: "clamp(14rem, 28vw, 24rem)",
           height: "clamp(8rem, 16vw, 14rem)",
           backgroundColor: "var(--accent)",
-          opacity: isHovered ? 0.22 : 0,
         }}
       />
 
-      <div
-        className={cn("relative transition-all duration-300 ease-out", isHovered ? "-translate-y-2 scale-110" : "translate-y-0 scale-100")}
-        style={{
-          width: "clamp(14rem, 28vw, 24rem)",
-          aspectRatio: "1 / 1",
-          backgroundColor: isHovered ? "var(--accent)" : "#ffffff",
-          WebkitMaskImage: maskImage,
-          maskImage: maskImage,
-          WebkitMaskRepeat: "no-repeat",
-          maskRepeat: "no-repeat",
-          WebkitMaskPosition: "center",
-          maskPosition: "center",
-          WebkitMaskSize: "contain",
-          maskSize: "contain",
-          filter: isHovered ? "drop-shadow(0 18px 32px rgba(249, 115, 22, 0.22))" : "none",
-        }}
-      />
+      <div className="eye-hover-container relative">
+        <div
+          ref={eyeRef}
+          className="eye-blink"
+          style={{
+            width: "clamp(14rem, 28vw, 24rem)",
+            aspectRatio: "1 / 1",
+            backgroundColor: "#ffffff",
+            WebkitMaskImage: "url('/eye_open.svg')",
+            maskImage: "url('/eye_open.svg')",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+          }}
+        />
+      </div>
     </div>
   )
 }
