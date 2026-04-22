@@ -1,3 +1,5 @@
+"use client"
+
 import { useEffect, useRef } from 'react';
 import { JSX } from 'react';
 
@@ -191,7 +193,7 @@ export default function PixelCard({
   const pixelsRef = useRef<Pixel[]>([]);
   const animationRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   const timePreviousRef = useRef(performance.now());
-  const reducedMotion = useRef(window.matchMedia('(prefers-reduced-motion: reduce)').matches).current;
+  const reducedMotion = useRef(typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false).current;
   const isHoveringRef = useRef(false);
 
   const variantCfg: VariantConfig = VARIANTS[variant] || VARIANTS.default;
