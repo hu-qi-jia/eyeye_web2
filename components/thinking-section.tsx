@@ -330,7 +330,7 @@ export function ThinkingSection() {
           </div>
           <button
             onClick={openCreateModal}
-            className="px-4 py-2 rounded-lg bg-accent/20 border border-accent/40 text-accent hover:bg-accent/30 transition-colors font-mono text-sm"
+            className="px-4 py-2 rounded-lg bg-transparent border border-transparent text-transparent hover:bg-transparent transition-colors font-mono text-sm"
           >
             + NOTE
           </button>
@@ -432,7 +432,7 @@ export function ThinkingSection() {
                   <button
                     onClick={() => handleDeleteNote(selectedItem.id)}
                     disabled={isDeleting}
-                    className="px-4 py-2 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-white transition-colors font-mono text-sm flex items-center gap-2"
+                    className="px-4 py-2 rounded-lg bg-transparent border border-transparent hover:bg-transparent text-transparent transition-colors font-mono text-sm flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -450,7 +450,7 @@ export function ThinkingSection() {
                       setEditingNoteId(selectedItem.id)
                       setIsCreateModalOpen(true)
                     }}
-                    className="px-4 py-2 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-white transition-colors font-mono text-sm flex items-center gap-2"
+                    className="px-4 py-2 rounded-lg bg-transparent border border-transparent hover:bg-transparent text-transparent transition-colors font-mono text-sm flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
