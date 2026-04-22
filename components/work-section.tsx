@@ -75,14 +75,17 @@ function EyeChat() {
   const [inputValue, setInputValue] = useState("")
   const [displayedText, setDisplayedText] = useState("")
   const [isTyping, setIsTyping] = useState(false)
-  const [aiStatus, setAiStatus] = useState<"online" | "thinking">("online")
+  const [aiStatus, setAiStatus] = useState<"online" | "thinking" | "error">("online")
   const [isHovered, setIsHovered] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [currentResponse, setCurrentResponse] = useState("")
+  const [conversationId, setConversationId] = useState("")
+  const [errorMessage, setErrorMessage] = useState("")
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messageIdRef = useRef(0)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const aiIntro = "你可以问我任何关于产品、技术或项目的问题，我会尽量给你真实的答案。"
 
@@ -148,7 +151,7 @@ function EyeChat() {
     "如果我想和你合作，你看重什么？",
   ]
 
-  const handleSend = (question?: string) => {
+  const handleSend = async (question?: string) => {
     const text = question || inputValue
     if (!text.trim() && !question) return
 
@@ -157,39 +160,97 @@ function EyeChat() {
     setInputValue("")
     setAiStatus("thinking")
     setCurrentResponse("")
+    setErrorMessage("")
 
-    const responses = [
-      "这个问题很有意思，让我思考一下。我的经验告诉我，关键在于持续迭代和用户反馈。",
-      "作为产品开发者，我一直相信技术应该服务于用户需求，而不是反过来。",
-      "我目前主要在研究 AI 与产品设计的结合，寻找更自然的人机交互方式。",
-      "合作的话，我更看重对方的思考方式和执行力。想法再好，执行不到位也没用。",
-    ]
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)]
-    let charIndex = 0
-    let mounted = true
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
 
-    setTimeout(() => {
-      if (!mounted) return
-      setAiStatus("online")
+    abortControllerRef.current = new AbortController()
 
-      const typeInterval = setInterval(() => {
-        if (!mounted) {
-          clearInterval(typeInterval)
-          return
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: text,
+          conversation_id: conversationId,
+          user: 'web-user',
+        }),
+        signal: abortControllerRef.current.signal,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'API request failed')
+      }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('No response body')
+      }
+
+      let buffer = ''
+      let isFirstChunk = true
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const parsed = JSON.parse(data)
+
+              if (parsed.conversation_id && isFirstChunk) {
+                setConversationId(parsed.conversation_id)
+                isFirstChunk = false
+              }
+
+              if (parsed.event === 'message' || parsed.event === 'agent_message') {
+                if (parsed.answer) {
+                  setCurrentResponse(prev => prev + parsed.answer)
+                }
+              }
+
+              if (parsed.event === 'message_end') {
+                setAiStatus('online')
+              }
+
+              if (parsed.event === 'error') {
+                throw new Error(parsed.message || 'Dify API error')
+              }
+            } catch (e) {
+              console.error('Parse error:', e)
+            }
+          }
         }
-        if (charIndex < randomResponse.length) {
-          setCurrentResponse(randomResponse.slice(0, charIndex + 1))
-          charIndex++
-        } else {
-          clearInterval(typeInterval)
-        }
-      }, 40)
-    }, 1500)
+      }
+
+      setAiStatus('online')
+    } catch (error) {
+      console.error('Chat error:', error)
+      setAiStatus('error')
+      setErrorMessage(error instanceof Error ? error.message : 'Unknown error')
+      setCurrentResponse('抱歉，我遇到了一些问题。请稍后再试。')
+    } finally {
+      abortControllerRef.current = null
+    }
   }
 
   const handleQuestionClick = (question: string) => {
-    setInputValue(question)
-    inputRef.current?.focus()
+    handleSend(question)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -226,11 +287,13 @@ function EyeChat() {
             <span
               className={cn(
                 "w-2 h-2 rounded-full transition-colors duration-300",
-                aiStatus === "online" ? "bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]" : "bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]"
+                aiStatus === "online" ? "bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]" : 
+                aiStatus === "thinking" ? "bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]" : 
+                "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.6)]"
               )}
             />
             <span className="text-xs font-mono text-white/50 uppercase tracking-wider">
-              {aiStatus === "online" ? "Online" : "Thinking..."}
+              {aiStatus === "online" ? "Online" : aiStatus === "thinking" ? "Thinking" : "Error"}
             </span>
           </div>
         </div>
@@ -280,6 +343,17 @@ function EyeChat() {
                     <span className="inline-block w-2 h-4 bg-accent ml-1 animate-pulse" />
                   )}
                 </p>
+                {aiStatus === "error" && errorMessage && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-xs text-red-400 font-mono">{errorMessage}</span>
+                    <button
+                      onClick={() => handleSend(messages[0].text)}
+                      className="text-xs text-accent hover:text-accent/80 underline"
+                    >
+                      重试
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
